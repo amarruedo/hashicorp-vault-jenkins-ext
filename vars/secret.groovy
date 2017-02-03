@@ -23,24 +23,21 @@ def parseJSON(String response, String secretName){
   }
 }
 
-def call(String vaultAddress = 'http://vault.default.svc.cluster.local:8200', int userInputTime = 5, String nodeName = 'master') {
+def call(String secretName, String vaultAddress = 'http://vault.default.svc.cluster.local:8200', int userInputTime = 5, String nodeName = 'master') {
 
   def username = ''
   def password = ''
-  def secret = ''
 
   timeout(time:userInputTime, unit:'MINUTES') {
 
     def userInput = input(
         id: 'userInput', message: 'User/Password/Secret', parameters: [
         [$class: 'TextParameterDefinition', defaultValue: '', description: 'Username input', name: 'username'],
-        [$class: 'PasswordParameterDefinition', defaultValue: '', description: 'Password input', name: 'password'],
-        [$class: 'TextParameterDefinition', defaultValue: '', description: 'Secret to retrieve', name: 'secret']
+        [$class: 'PasswordParameterDefinition', defaultValue: '', description: 'Password input', name: 'password']
     ])
 
     username=userInput['username'].toString()
     password=userInput['password'].toString()
-    secretName=userInput['secret'].toString()
   }
 
   node(nodeName){
