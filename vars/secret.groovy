@@ -10,9 +10,9 @@ def parseJSON(String response, String secretName){
 
       if (result.errors)
           error "Vault: " + result.errors[0].toString()
-      else if (secretName == "client_token" && result.auth.client_token)
+      else if (secretName == 'client_token' && result.auth.client_token)
           return result.auth.client_token
-      else if (secretName == "data" && result.data)
+      else if (secretName == 'data' && result.data)
           return result.data
       else
           error "Can't retrieve secret"
@@ -23,7 +23,7 @@ def parseJSON(String response, String secretName){
   }
 }
 
-def call(String secretName, String vaultAddress = 'http://vault.default.svc.cluster.local:8200', int userInputTime = 5, String nodeName = 'master') {
+def call(String secretName, String vaultAddress = 'http://vault.default.svc.cluster.local:8200', int userInputTime = 5) {
 
   def username = ''
   def password = ''
@@ -40,15 +40,11 @@ def call(String secretName, String vaultAddress = 'http://vault.default.svc.clus
     password=userInput['password'].toString()
   }
 
-  node(nodeName){
+  def response = httpRequest contentType: 'APPLICATION_JSON', httpMode: 'POST', requestBody: '{ "password": "' + password + '" }', url: vaultAddress + "/v1/auth/userpass/login/" + username
+  def vault_token = parseJSON(response.content, 'client_token').toString()
+  response = httpRequest customHeaders: [[name: 'X-Vault-Token', value: vault_token]], contentType: 'APPLICATION_JSON', httpMode: 'GET', url: vaultAddress + "/v1/secret/" + secretName
+  def data = parseJSON(response.content, 'data')
 
-      response = sh(returnStdout: true, script:"set +x; curl -s " + vaultAddress + "/v1/auth/userpass/login/" + username +" -d '{ \"password\": \"" + password + "\" }'").trim()
-      def result = parseJSON(response, "client_token")
-      def vault_token = result.toString()
+  return data
 
-      secrets = sh(returnStdout: true, script:"set +x; curl -s -X GET -H \"X-Vault-Token:" + vault_token + "\" " + vaultAddress + "/v1/secret/" + secretName).trim()
-      result = parseJSON(secrets, "data")
-
-      return result
-  }
 }
