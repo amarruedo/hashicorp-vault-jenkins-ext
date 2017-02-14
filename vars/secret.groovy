@@ -1,6 +1,7 @@
 #!groovy
 
 import groovy.json.*
+import java.net.URLEncoder
 
 def parseJSON(String response, String secretName){
 
@@ -23,6 +24,14 @@ def parseJSON(String response, String secretName){
   }
 }
 
+def urlEncodeSecret(String secretPath){
+  def encodedList = []
+  for (String text : secretPath.split("/")) {
+    encodedList.add(URLEncoder.encode(text, "UTF-8"))
+  }
+  return encodedList.join("/").replaceAll("\\+", "%20")
+}
+
 def call(String secretName, String vaultAddress = 'http://vault.default.svc.cluster.local:8200', int userInputTime = 5) {
 
   def username = ''
@@ -40,9 +49,9 @@ def call(String secretName, String vaultAddress = 'http://vault.default.svc.clus
     password=userInput['password'].toString()
   }
 
-  def response = httpRequest contentType: 'APPLICATION_JSON', httpMode: 'POST', requestBody: '{ "password": "' + password + '" }', url: vaultAddress + "/v1/auth/userpass/login/" + username
+  def response = httpRequest contentType: 'APPLICATION_JSON', httpMode: 'POST', requestBody: '{ "password": "' + password + '" }', url: vaultAddress + "/v1/auth/userpass/login/" + URLEncoder.encode(username, "UTF-8")
   def vault_token = parseJSON(response.content, 'client_token').toString()
-  response = httpRequest customHeaders: [[name: 'X-Vault-Token', value: vault_token]], contentType: 'APPLICATION_JSON', httpMode: 'GET', url: vaultAddress + "/v1/secret/" + secretName
+  response = httpRequest customHeaders: [[name: 'X-Vault-Token', value: vault_token, maskValue: true]], contentType: 'APPLICATION_JSON', httpMode: 'GET', url: vaultAddress + "/v1/secret" + urlEncodeSecret(secretName)
   def data = parseJSON(response.content, 'data')
 
   return data
